@@ -38,7 +38,7 @@ int main()
 
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     check_error(sockfd, "socket()");
-
+    printf("\033[35m###### MANAGER GERADO ######\033[0m\n");
     err = bind(sockfd, res->ai_addr, res->ai_addrlen);
     check_error(err, "bind()");
     err = listen(sockfd, 1);
@@ -51,7 +51,7 @@ int main()
     ssize_t bytes;
     bytes = recv(clientfd, num, sizeof(num), 0);
     check_error(bytes, "recv()");
-    printf("O resultado da redução é: %s\n", num);
+    printf("\033[35mO resultado da redução é: %s\n", num);
 
     send(clientfd, num, sizeof(num), 0);
     close(sockfd);

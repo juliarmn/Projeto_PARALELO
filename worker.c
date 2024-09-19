@@ -59,7 +59,7 @@ void calculate_port(int num, char *port)
         strcpy(port, PORT_WORKER_7);
         break;
     default:
-        fprintf(stderr, "Número de worker inválido (deve ser entre 0 e 7).\n");
+        fprintf(stderr, "\033[31mNúmero de worker inválido (deve ser entre 0 e 7).\n");
         exit(1);
         break;
     }
@@ -76,7 +76,7 @@ void *server_function(char *num, char *PORT)
     int err = getaddrinfo(NULL, PORT, &hints, &res);
     if (err != 0)
     {
-        fprintf(stderr, "getaddrinfo: %s", gai_strerror(err));
+        fprintf(stderr, "\033[31mgetaddrinfo: %s", gai_strerror(err));
         exit(1);
     }
 
@@ -102,7 +102,8 @@ void *server_function(char *num, char *PORT)
 
     sprintf(num, "%d", num_to_sum_server);
 
-    printf("Número somado pelo servidor: %s\n", num);
+    printf("\033[34mNúmero somado pelo servidor: %s\n", num);
+    printf("\033[34m/-------------------------/\n");
 
     send(clientfd, num, sizeof(num), 0);
     close(sockfd);
@@ -121,7 +122,7 @@ void *client_function(char *num, char *PORT)
 
     if (err != 0)
     {
-        fprintf(stderr, "getaddrinfo: %s", gai_strerror(err));
+        fprintf(stderr, "\033[31mgetaddrinfo: %s", gai_strerror(err));
         exit(1);
     }
 
@@ -139,8 +140,8 @@ void *client_function(char *num, char *PORT)
         }
         else
         {
-            perror("connect");
-            printf("Tentando conectar em 1 segundo...\n");
+            perror("\033[32mconnect");
+            printf("\033[32mTentando conectar em 1 segundo...\n");
             sleep(1);
         }
     }
@@ -156,8 +157,8 @@ void *client_function(char *num, char *PORT)
 
     bytes = recv(sockfd, num, sizeof(num), 0);
 
-    printf("Número somado recebido pelo cliente: %s\n", num);
-    printf("/-------------------------/\n");
+    printf("\033[35mNúmero somado recebido pelo cliente: %s\n", num);
+    printf("\033[35m/-------------------------/\n");
     close(sockfd);
     freeaddrinfo(res);
 }
@@ -188,8 +189,8 @@ void send_to_manager(char *final_number)
         }
         else
         {
-            perror("connect");
-            printf("Tentando conectar em 1 segundo no último...\n");
+            perror("\033[32mconnect");
+            printf("\033[32mTentando conectar em 1 segundo no último...\n");
             sleep(1);
         }
     }
@@ -213,7 +214,7 @@ int main(int argc, char *argv[])
 {
     if (argc != 2)
     {
-        fprintf(stderr, "Deve colocar: %s <worker_number>\n", argv[0]);
+        fprintf(stderr, "\033[31mDeve colocar: %s <worker_number>\n", argv[0]);
         exit(1);
     }
 
@@ -228,7 +229,7 @@ int main(int argc, char *argv[])
     char number_to_send[5];
     sprintf(number_to_send, "%d", number);
 
-    printf("No %d gerou numero %d\n", worker_number, number);
+    printf("\033[33mNo %d gerou numero %d\033[0m\n", worker_number, number);
 
     int i = (int)log2(NUM_WORKERS) - 1;
     int count = 1;
@@ -237,8 +238,8 @@ int main(int argc, char *argv[])
     {
         if ((worker_number & count) != 0)
         {
-            printf("/-------------------------/\n");
-            printf("Cliente %d enviou numero: %s \n", worker_number, number_to_send);
+            printf("\033[35m/-------------------------/\n");
+            printf("\033[35mCliente %d enviou numero: %s \n", worker_number, number_to_send);
             if (worker_number == 1 || worker_number == 2 || worker_number == 4)
             {
                 client_function(number_to_send, PORT_WORKER_0);
@@ -259,19 +260,19 @@ int main(int argc, char *argv[])
         }
         else
         {
-            printf("Servidor %d enviou numero: %s \n", worker_number, number_to_send);
+            printf("\033[34m/-------------------------/\n");
+            printf("\033[34mServidor %d enviou numero: %s \n", worker_number, number_to_send);
             server_function(number_to_send, port);
         }
 
         count = count * 2;
         i--;
-
     }
 
     if (worker_number == 0)
-        {
-            send_to_manager(number_to_send);
-        }
+    {
+        send_to_manager(number_to_send);
+    }
 
     return 0;
 }
