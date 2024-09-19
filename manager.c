@@ -15,7 +15,7 @@ void check_error(const int code, const char *func_name)
 {
     if (code == -1)
     {
-        perror("func_name");
+        perror(func_name);
 
         exit(1);
     }
@@ -45,13 +45,12 @@ int main()
     check_error(err, "listen()");
 
     int clientfd = accept(sockfd, NULL, NULL);
-    check_error(err, "accept()");
+    check_error(clientfd, "accept()");
 
-    uint32_t network_number;
     ssize_t bytes;
-
-    bytes = recv(sockfd, &network_number, sizeof(network_number), 0);
-    printf("O resultado da redução é: %d\n", network_number);
+    char num[4];
+    bytes = recv(sockfd, num, sizeof(num), 0);
+    printf("O resultado da redução é: %s\n", num);
     close(sockfd);
     close(clientfd);
     freeaddrinfo(res);

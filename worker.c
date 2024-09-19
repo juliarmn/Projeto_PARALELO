@@ -9,14 +9,14 @@
 #include <arpa/inet.h>
 #include <math.h>
 
-#define PORT_WORKER_1 "8081"
-#define PORT_WORKER_2 "8082"
-#define PORT_WORKER_3 "8083"
-#define PORT_WORKER_4 "8084"
-#define PORT_WORKER_5 "8085"
-#define PORT_WORKER_6 "8086"
-#define PORT_WORKER_7 "8087"
-#define PORT_WORKER_8 "8088"
+#define PORT_WORKER_0 "8081"
+#define PORT_WORKER_1 "8082"
+#define PORT_WORKER_2 "8083"
+#define PORT_WORKER_3 "8084"
+#define PORT_WORKER_4 "8085"
+#define PORT_WORKER_5 "8086"
+#define PORT_WORKER_6 "8087"
+#define PORT_WORKER_7 "8088"
 #define PORT_MANAGER "8080"
 #define NUM_WORKERS 8
 
@@ -24,7 +24,7 @@ void check_error(const int code, const char *func_name)
 {
     if (code == -1)
     {
-        perror("func_name");
+        perror(func_name);
 
         exit(1);
     }
@@ -34,6 +34,9 @@ void calculate_port(int num, char *port)
 {
     switch (num)
     {
+    case 0:
+        strcpy(port, PORT_WORKER_0);
+        break;
     case 1:
         strcpy(port, PORT_WORKER_1);
         break;
@@ -55,24 +58,21 @@ void calculate_port(int num, char *port)
     case 7:
         strcpy(port, PORT_WORKER_7);
         break;
-    case 8:
-        strcpy(port, PORT_WORKER_8);
-        break;
     default:
-        fprintf(stderr, "Número de worker inválido (deve ser entre 1 e 8).\n");
+        fprintf(stderr, "Número de worker inválido (deve ser entre 0 e 7).\n");
         exit(1);
         break;
     }
 }
 
-void *server_function(int *num, char *PORT)
+void *server_function(char *num, char *PORT)
 {
     struct addrinfo hints, *res;
     bzero(&hints, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-
     hints.ai_flags = AI_PASSIVE;
+
     int err = getaddrinfo(NULL, PORT, &hints, &res);
     if (err != 0)
     {
@@ -89,22 +89,26 @@ void *server_function(int *num, char *PORT)
     check_error(err, "listen()");
 
     int clientfd = accept(sockfd, NULL, NULL);
-    check_error(err, "accept()");
+    check_error(clientfd, "accept()");
 
-    uint32_t network_number;
-    ssize_t bytes;
-    bytes = recv(sockfd, &network_number, sizeof(network_number), 0);
+    char num_to_receive[4];
+    ssize_t bytes = recv(clientfd, num_to_receive, sizeof(num_to_receive), 0);
+    check_error(bytes, "recv()");
 
-    *num += ntohl(network_number);
+    int num_to_sum_server = atoi(num);
+    int num_to_sum_client = atoi(num_to_receive);
 
-    uint32_t num_sum = htonl(*num);
-    send(clientfd, &num_sum, sizeof(num_sum), 0);
+    num_to_sum_server += num_to_sum_client;
+
+    sprintf(num, "%d", num_to_sum_server);
+
+    send(clientfd, num, strlen(num), 0);
     close(sockfd);
     close(clientfd);
     freeaddrinfo(res);
 }
 
-void *client_function(int *num, char *PORT)
+void *client_function(char *num, char *PORT)
 {
     struct addrinfo hints, *res;
     bzero(&hints, sizeof(hints));
@@ -127,9 +131,7 @@ void *client_function(int *num, char *PORT)
     err = connect(sockfd, res->ai_addr, res->ai_addrlen);
     check_error(err, "connect()");
 
-    uint32_t network_number = htonl(*num);
-
-    ssize_t bytes_sent = send(sockfd, &network_number, sizeof(network_number), 0);
+    ssize_t bytes_sent = send(sockfd, num, sizeof(num), 0);
 
     if (bytes_sent < 0)
     {
@@ -138,15 +140,15 @@ void *client_function(int *num, char *PORT)
     }
     ssize_t bytes;
 
-    bytes = recv(sockfd, &network_number, sizeof(network_number), 0);
+    bytes = recv(sockfd, num, sizeof(num), 0);
 
-    printf("Número enviado: %d\n", network_number);
+    printf("Número enviado: %d\n", num);
 
     close(sockfd);
     freeaddrinfo(res);
 }
 
-void send_to_manager(int final_number)
+void send_to_manager(char *final_number)
 {
     struct addrinfo hints, *res;
     bzero(&hints, sizeof(hints));
@@ -166,9 +168,8 @@ void send_to_manager(int final_number)
     err = connect(sockfd, res->ai_addr, res->ai_addrlen);
     check_error(err, "connect()");
 
-    uint32_t network_number = htonl(final_number);
 
-    ssize_t bytes_sent = send(sockfd, &network_number, sizeof(network_number), 0);
+    ssize_t bytes_sent = send(sockfd, final_number, sizeof(final_number), 0);
 
     if (bytes_sent < 0)
     {
@@ -196,24 +197,37 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     int number = rand() % 100;
+    char number_to_send[4];
+    sprintf(number_to_send, "%d", number);
 
-    int i = (int)log2(NUM_WORKERS);
+    printf("No %d gerou numero %d\n", worker_number, number);
+
+    int i = (int)log2(NUM_WORKERS) - 1;
 
     while (i >= 0)
     {
-        if ((worker_number & (1 << i)) != 0)
+        if (i == (int)log2(NUM_WORKERS) - 1 || (i == (int)log2(NUM_WORKERS) - 2 && worker_number % 2 == 1) || i == 0 && (worker_number == 0 || worker_number == 4))
         {
-            server_function(&number, port);
+            if (worker_number & (1 << i) != 0)
+            {
+                if (worker_number == 1 || worker_number == 2 || worker_number == 4) {
+                    client_function(number_to_send, PORT_WORKER_0);
+                } else if (worker_number == 3) {
+                    client_function(number_to_send, PORT_WORKER_2);
+                } else if (worker_number == 5 || worker_number == 6) {
+                    client_function(number_to_send, PORT_WORKER_4);
+                } else {
+                    client_function(number_to_send, PORT_WORKER_6);
+                }
+            }
+            else
+            {
+                server_function(number_to_send, port);
+            }
+            i--;
         }
-        else
-        {
-            client_function(&number, port);
-        }
+    } 
 
-        i--;
-        sleep(1);
-    }
-
-    send_to_manager(number);
+    send_to_manager(number_to_send);
     return 0;
 }
