@@ -10,7 +10,7 @@
 #include <math.h>
 
 #define PORT_MANAGER "8080"
-// hi
+
 void check_error(const int code, const char *func_name)
 {
     if (code == -1)
