@@ -20,6 +20,12 @@
 #define PORT_MANAGER "8080"
 #define NUM_WORKERS 8
 
+/**
+ * @param const int code: o que foi devolvido ao chamar a função
+ * @param const char* func_name: representa o nome da função para a mensagem de erro correta
+ * 
+ * Se for -1 tem algo errado, então mostra a mensagem de erro e encerra o codigo.
+ */
 void check_error(const int code, const char *func_name)
 {
     if (code == -1)
@@ -30,6 +36,12 @@ void check_error(const int code, const char *func_name)
     }
 }
 
+/**
+ * @param int numero enviado no terminal
+ * @param char* porta correspondente - modifica o ponteiro
+ * 
+ * Salva a porta correta de acordo com o worker
+ */
 void calculate_port(int num, char *port)
 {
     switch (num)
@@ -65,6 +77,13 @@ void calculate_port(int num, char *port)
     }
 }
 
+/**
+ * @param char número recebido: aquele que o cliente enviou para o cálculo
+ * @param char* port: porta do servidor a se conectar
+ * 
+ * Cria um servidor que recebe o número e calcula o necessário.
+ * 
+ */
 void *server_function(char *num, char *PORT)
 {
     struct addrinfo hints, *res;
@@ -111,6 +130,13 @@ void *server_function(char *num, char *PORT)
     freeaddrinfo(res);
 }
 
+/**
+ * @param char* num: número do cliente - que ele envia para o servidor
+ * @param char* port
+ * 
+ * Função cliente: cria um socket cliente que envia o número para o servidor e recebe sua confiamção.
+ * 
+ */
 void *client_function(char *num, char *PORT)
 {
     struct addrinfo hints, *res;
@@ -163,6 +189,12 @@ void *client_function(char *num, char *PORT)
     freeaddrinfo(res);
 }
 
+/**
+ * @param char* final_number
+ * 
+ * Recebe o número final e envia para o manager, encerrando o processo.
+ * Ou seja, cria um cliente no final.
+ */
 void send_to_manager(char *final_number)
 {
     struct addrinfo hints, *res;
@@ -210,6 +242,14 @@ void send_to_manager(char *final_number)
     freeaddrinfo(res);
 }
 
+/**
+ * @param int argc: quantas palavras/ parametros foram lidos ao compilar
+ * @param char* argv para pegar o número do worker
+ * 
+ * Calcula a porta e faz a lógica do borboleta.
+ * Na lógica usa bitwise, com count múltiplo de 2 para saber se os bits correspondentes a cada camada são 1 ou 0.
+ * Assim, define qual  worker é cliente e qual é servidor.
+ */
 int main(int argc, char *argv[])
 {
     if (argc != 2)

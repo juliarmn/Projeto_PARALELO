@@ -11,6 +11,12 @@
 
 #define PORT_MANAGER "8080"
 
+/**
+ * @param const int code: o que foi devolvido ao chamar a função
+ * @param const char* func_name: representa o nome da função para a mensagem de erro correta
+ * 
+ * Se for -1 tem algo errado, então mostra a mensagem de erro e encerra o codigo.
+ */
 void check_error(const int code, const char *func_name)
 {
     if (code == -1)
@@ -21,6 +27,9 @@ void check_error(const int code, const char *func_name)
     }
 }
 
+/**
+ * Essa main cria o servidor que printa o último resultado - o manager
+ */
 int main()
 {
     struct addrinfo hints, *res;
@@ -47,7 +56,7 @@ int main()
     int clientfd = accept(sockfd, NULL, NULL);
     check_error(clientfd, "accept()");
 
-    char num[5];
+    char num[5]; 
     ssize_t bytes;
     bytes = recv(clientfd, num, sizeof(num), 0);
     check_error(bytes, "recv()");

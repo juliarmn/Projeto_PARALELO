@@ -1,5 +1,7 @@
 # Projeto 1 de Programação Concorrente e Paralela
 
+### Alunos: Amanda Pramprero, Júlia Rodrigues, Rubens Abrão
+
 O projeto consistia em criar uma barreira borboleta entre 8 processos trabalhando como cliente e servidor, realizando redução de dados ao receberem números aleatórios dos clientes e somá-los, passando para a próxima camada. Esses 8 processos eram denominados workers e tinha 1 manager.
 
 A ideia para implementar a parte de cliente-servidor foi por meio de bibliotecas em C como <netdb.h>, <sys/socket.h>, <arpa/inet.h>. O servidor espera o número que vai somar com o seu número e o cliente envia esse valor. Todos os números são aleatórios.
