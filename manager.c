@@ -49,7 +49,7 @@ int main()
 
     char num[5];
     ssize_t bytes;
-    bytes = recv(sockfd, num, sizeof(num), 0);
+    bytes = recv(clientfd, num, sizeof(num), 0);
     check_error(bytes, "recv()");
     printf("O resultado da redução é: %s\n", num);
 

@@ -235,43 +235,43 @@ int main(int argc, char *argv[])
 
     while (i >= 0)
     {
-        if (worker_number % count == 0)
+        if ((worker_number & count) != 0)
         {
-            if ((worker_number & (1 << i)) != 0)
+            printf("/-------------------------/\n");
+            printf("Cliente %d enviou numero: %s \n", worker_number, number_to_send);
+            if (worker_number == 1 || worker_number == 2 || worker_number == 4)
             {
-                printf("/-------------------------/\n");
-                printf("Cliente %d enviou numero: %s \n", worker_number, number_to_send);
-                if (worker_number == 1 || worker_number == 2 || worker_number == 4)
-                {
-                    client_function(number_to_send, PORT_WORKER_0);
-                }
-                else if (worker_number == 3)
-                {
-                    client_function(number_to_send, PORT_WORKER_2);
-                }
-                else if (worker_number == 5 || worker_number == 6)
-                {
-                    client_function(number_to_send, PORT_WORKER_4);
-                }
-                else if (worker_number == 7)
-                {
-                    client_function(number_to_send, PORT_WORKER_6);
-                }
+                client_function(number_to_send, PORT_WORKER_0);
             }
-            else
+            else if (worker_number == 3)
             {
-                printf("Servidor %d enviou numero: %s \n", worker_number, number_to_send);
-                server_function(number_to_send, port);
+                client_function(number_to_send, PORT_WORKER_2);
             }
+            else if (worker_number == 5 || worker_number == 6)
+            {
+                client_function(number_to_send, PORT_WORKER_4);
+            }
+            else if (worker_number == 7)
+            {
+                client_function(number_to_send, PORT_WORKER_6);
+            }
+            break;
         }
+        else
+        {
+            printf("Servidor %d enviou numero: %s \n", worker_number, number_to_send);
+            server_function(number_to_send, port);
+        }
+
         count = count * 2;
         i--;
-        printf("i: %d\n", i);
-        if (i == -1 && worker_number == 0)
+
+    }
+
+    if (worker_number == 0)
         {
             send_to_manager(number_to_send);
         }
-    }
 
     return 0;
 }
