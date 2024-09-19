@@ -140,7 +140,7 @@ void *client_function(char *num, char *PORT)
         else
         {
             perror("connect");
-            printf("Retrying connection in 1 second...\n");
+            printf("Tentando conectar em 1 segundo...\n");
             sleep(1);
         }
     }
@@ -155,7 +155,7 @@ void *client_function(char *num, char *PORT)
     }
     ssize_t bytes;
 
-    bytes = recv(sockfd, num, sizeof(num), 0);
+    bytes = recv(sockfd, num, strlen(num), 0);
 
     printf("Número somado recebido pelo cliente: %s\n", num);
     printf("/-------------------------/\n");
@@ -230,10 +230,11 @@ int main(int argc, char *argv[])
     printf("No %d gerou numero %d\n", worker_number, number);
 
     int i = (int)log2(NUM_WORKERS) - 1;
+    int count = 1;
 
     while (i >= 0)
     {
-        if (i == (int)log2(NUM_WORKERS) - 1 || (i == (int)log2(NUM_WORKERS) - 2 && worker_number % 2 == 0) || i == 0 && (worker_number == 0 || worker_number == 4))
+        if (worker_number % count == 0)
         {
             if (worker_number & (1 << i) != 0)
             {
@@ -262,6 +263,7 @@ int main(int argc, char *argv[])
                 server_function(number_to_send, port);
             }
         }
+        count = count * 2;
         i--;
     }
 
