@@ -102,6 +102,8 @@ void *server_function(char *num, char *PORT)
 
     sprintf(num, "%d", num_to_sum_server);
 
+    printf("Número somado pelo servidor: %s\n", num);
+
     send(clientfd, num, strlen(num), 0);
     close(sockfd);
     close(clientfd);
@@ -128,8 +130,21 @@ void *client_function(char *num, char *PORT)
                         res->ai_protocol);
     check_error(sockfd, "socket()");
 
-    err = connect(sockfd, res->ai_addr, res->ai_addrlen);
-    check_error(err, "connect()");
+        while (1)
+    {
+        err = connect(sockfd, res->ai_addr, res->ai_addrlen);
+        if (err != -1)
+        {
+            break;
+        }
+        else
+        {
+            perror("connect");
+            printf("Retrying connection in 1 second...\n");
+            sleep(1);
+        }
+    }
+
 
     ssize_t bytes_sent = send(sockfd, num, sizeof(num), 0);
 
@@ -142,8 +157,8 @@ void *client_function(char *num, char *PORT)
 
     bytes = recv(sockfd, num, sizeof(num), 0);
 
-    printf("Número enviado: %d\n", num);
-
+    printf("Número somado recebido pelo cliente: %s\n", num);
+    printf("/-------------------------/\n");
     close(sockfd);
     freeaddrinfo(res);
 }
@@ -165,8 +180,20 @@ void send_to_manager(char *final_number)
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     check_error(sockfd, "socket()");
 
-    err = connect(sockfd, res->ai_addr, res->ai_addrlen);
-    check_error(err, "connect()");
+        while (1)
+    {
+        err = connect(sockfd, res->ai_addr, res->ai_addrlen);
+        if (err != -1)
+        {
+            break;
+        }
+        else
+        {
+            perror("connect");
+            printf("Retrying connection in 1 second...\n");
+            sleep(1);
+        }
+    }
 
 
     ssize_t bytes_sent = send(sockfd, final_number, sizeof(final_number), 0);
@@ -206,27 +233,37 @@ int main(int argc, char *argv[])
 
     while (i >= 0)
     {
-        if (i == (int)log2(NUM_WORKERS) - 1 || (i == (int)log2(NUM_WORKERS) - 2 && worker_number % 2 == 1) || i == 0 && (worker_number == 0 || worker_number == 4))
+        if (i == (int)log2(NUM_WORKERS) - 1 || (i == (int)log2(NUM_WORKERS) - 2 && worker_number % 2 == 0) || i == 0 && (worker_number == 0 || worker_number == 4))
         {
             if (worker_number & (1 << i) != 0)
             {
-                if (worker_number == 1 || worker_number == 2 || worker_number == 4) {
+                printf("/-------------------------/\n");
+                printf("Cliente %d enviou numero: %s \n", worker_number, number_to_send);
+                if (worker_number == 1 || worker_number == 2 || worker_number == 4)
+                {
                     client_function(number_to_send, PORT_WORKER_0);
-                } else if (worker_number == 3) {
+                }
+                else if (worker_number == 3)
+                {
                     client_function(number_to_send, PORT_WORKER_2);
-                } else if (worker_number == 5 || worker_number == 6) {
+                }
+                else if (worker_number == 5 || worker_number == 6)
+                {
                     client_function(number_to_send, PORT_WORKER_4);
-                } else {
+                }
+                else if (worker_number == 7)
+                {
                     client_function(number_to_send, PORT_WORKER_6);
                 }
             }
             else
             {
+                printf("Servidor %d enviou numero: %s \n", worker_number, number_to_send);
                 server_function(number_to_send, port);
             }
-            i--;
         }
-    } 
+        i--;
+    }
 
     send_to_manager(number_to_send);
     return 0;
