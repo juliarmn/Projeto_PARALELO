@@ -47,10 +47,13 @@ int main()
     int clientfd = accept(sockfd, NULL, NULL);
     check_error(clientfd, "accept()");
 
+    char num[5];
     ssize_t bytes;
-    char num[4];
     bytes = recv(sockfd, num, sizeof(num), 0);
+    check_error(bytes, "recv()");
     printf("O resultado da redução é: %s\n", num);
+
+    send(clientfd, num, sizeof(num), 0);
     close(sockfd);
     close(clientfd);
     freeaddrinfo(res);

@@ -91,7 +91,7 @@ void *server_function(char *num, char *PORT)
     int clientfd = accept(sockfd, NULL, NULL);
     check_error(clientfd, "accept()");
 
-    char num_to_receive[4];
+    char num_to_receive[5];
     ssize_t bytes = recv(clientfd, num_to_receive, sizeof(num_to_receive), 0);
     check_error(bytes, "recv()");
 
@@ -104,7 +104,7 @@ void *server_function(char *num, char *PORT)
 
     printf("Número somado pelo servidor: %s\n", num);
 
-    send(clientfd, num, strlen(num), 0);
+    send(clientfd, num, sizeof(num), 0);
     close(sockfd);
     close(clientfd);
     freeaddrinfo(res);
@@ -130,7 +130,7 @@ void *client_function(char *num, char *PORT)
                         res->ai_protocol);
     check_error(sockfd, "socket()");
 
-        while (1)
+    while (1)
     {
         err = connect(sockfd, res->ai_addr, res->ai_addrlen);
         if (err != -1)
@@ -145,7 +145,6 @@ void *client_function(char *num, char *PORT)
         }
     }
 
-
     ssize_t bytes_sent = send(sockfd, num, sizeof(num), 0);
 
     if (bytes_sent < 0)
@@ -155,7 +154,7 @@ void *client_function(char *num, char *PORT)
     }
     ssize_t bytes;
 
-    bytes = recv(sockfd, num, strlen(num), 0);
+    bytes = recv(sockfd, num, sizeof(num), 0);
 
     printf("Número somado recebido pelo cliente: %s\n", num);
     printf("/-------------------------/\n");
@@ -180,7 +179,7 @@ void send_to_manager(char *final_number)
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     check_error(sockfd, "socket()");
 
-        while (1)
+    while (1)
     {
         err = connect(sockfd, res->ai_addr, res->ai_addrlen);
         if (err != -1)
@@ -190,11 +189,10 @@ void send_to_manager(char *final_number)
         else
         {
             perror("connect");
-            printf("Retrying connection in 1 second...\n");
+            printf("Tentando conectar em 1 segundo no último...\n");
             sleep(1);
         }
     }
-
 
     ssize_t bytes_sent = send(sockfd, final_number, sizeof(final_number), 0);
 
@@ -203,7 +201,10 @@ void send_to_manager(char *final_number)
         perror("send()");
         exit(EXIT_FAILURE);
     }
+    ssize_t bytes;
 
+    bytes = recv(sockfd, final_number, sizeof(final_number), 0);
+    check_error(bytes, "recv()");
     close(sockfd);
     freeaddrinfo(res);
 }
@@ -224,7 +225,7 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     int number = rand() % 100;
-    char number_to_send[4];
+    char number_to_send[5];
     sprintf(number_to_send, "%d", number);
 
     printf("No %d gerou numero %d\n", worker_number, number);
@@ -236,7 +237,7 @@ int main(int argc, char *argv[])
     {
         if (worker_number % count == 0)
         {
-            if (worker_number & (1 << i) != 0)
+            if ((worker_number & (1 << i)) != 0)
             {
                 printf("/-------------------------/\n");
                 printf("Cliente %d enviou numero: %s \n", worker_number, number_to_send);
@@ -265,8 +266,12 @@ int main(int argc, char *argv[])
         }
         count = count * 2;
         i--;
+        printf("i: %d\n", i);
+        if (i == -1 && worker_number == 0)
+        {
+            send_to_manager(number_to_send);
+        }
     }
 
-    send_to_manager(number_to_send);
     return 0;
 }
