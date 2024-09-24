@@ -19,11 +19,12 @@
 #define PORT_WORKER_7 "8088"
 #define PORT_MANAGER "8080"
 #define NUM_WORKERS 8
+#define CHAR_NUM_SIZE 4
 
 /**
  * @param const int code: o que foi devolvido ao chamar a função
  * @param const char* func_name: representa o nome da função para a mensagem de erro correta
- * 
+ *
  * Se for -1 tem algo errado, então mostra a mensagem de erro e encerra o codigo.
  */
 void check_error(const int code, const char *func_name)
@@ -39,7 +40,7 @@ void check_error(const int code, const char *func_name)
 /**
  * @param int numero enviado no terminal
  * @param char* porta correspondente - modifica o ponteiro
- * 
+ *
  * Salva a porta correta de acordo com o worker
  */
 void calculate_port(int num, char *port)
@@ -80,9 +81,9 @@ void calculate_port(int num, char *port)
 /**
  * @param char número recebido: aquele que o cliente enviou para o cálculo
  * @param char* port: porta do servidor a se conectar
- * 
+ *
  * Cria um servidor que recebe o número e calcula o necessário.
- * 
+ *
  */
 void *server_function(char *num, char *PORT)
 {
@@ -110,7 +111,7 @@ void *server_function(char *num, char *PORT)
     int clientfd = accept(sockfd, NULL, NULL);
     check_error(clientfd, "accept()");
 
-    char num_to_receive[5];
+    char num_to_receive[CHAR_NUM_SIZE];
     ssize_t bytes = recv(clientfd, num_to_receive, sizeof(num_to_receive), 0);
     check_error(bytes, "recv()");
 
@@ -133,9 +134,9 @@ void *server_function(char *num, char *PORT)
 /**
  * @param char* num: número do cliente - que ele envia para o servidor
  * @param char* port
- * 
+ *
  * Função cliente: cria um socket cliente que envia o número para o servidor e recebe sua confiamção.
- * 
+ *
  */
 void *client_function(char *num, char *PORT)
 {
@@ -191,7 +192,7 @@ void *client_function(char *num, char *PORT)
 
 /**
  * @param char* final_number
- * 
+ *
  * Recebe o número final e envia para o manager, encerrando o processo.
  * Ou seja, cria um cliente no final.
  */
@@ -245,7 +246,7 @@ void send_to_manager(char *final_number)
 /**
  * @param int argc: quantas palavras/ parametros foram lidos ao compilar
  * @param char* argv para pegar o número do worker
- * 
+ *
  * Calcula a porta e faz a lógica do borboleta.
  * Na lógica usa bitwise, com count múltiplo de 2 para saber se os bits correspondentes a cada camada são 1 ou 0.
  * Assim, define qual  worker é cliente e qual é servidor.
@@ -266,13 +267,15 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     int number = rand() % 100;
-    char number_to_send[5];
+    char number_to_send[CHAR_NUM_SIZE];
     sprintf(number_to_send, "%d", number);
 
     printf("\033[33mNo %d gerou numero %d\033[0m\n", worker_number, number);
 
     int i = (int)log2(NUM_WORKERS) - 1;
     int count = 1;
+    int controller = 0;
+    int neighboor;
 
     while (i >= 0)
     {
@@ -280,22 +283,10 @@ int main(int argc, char *argv[])
         {
             printf("\033[35m/-------------------------/\n");
             printf("\033[35mCliente %d enviou numero: %s \n", worker_number, number_to_send);
-            if (worker_number == 1 || worker_number == 2 || worker_number == 4)
-            {
-                client_function(number_to_send, PORT_WORKER_0);
-            }
-            else if (worker_number == 3)
-            {
-                client_function(number_to_send, PORT_WORKER_2);
-            }
-            else if (worker_number == 5 || worker_number == 6)
-            {
-                client_function(number_to_send, PORT_WORKER_4);
-            }
-            else if (worker_number == 7)
-            {
-                client_function(number_to_send, PORT_WORKER_6);
-            }
+            neighboor = worker_number ^ count;
+            char port_neighboor[5];
+            calculate_port(neighboor, port);
+            client_function(number_to_send, port_neighboor);
             break;
         }
         else
