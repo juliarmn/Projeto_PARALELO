@@ -21,12 +21,14 @@
 #define NUM_WORKERS 8
 #define CHAR_NUM_SIZE 4
 
-/**
- * @param const int code: o que foi devolvido ao chamar a função
- * @param const char* func_name: representa o nome da função para a mensagem de erro correta
- *
- * Se for -1 tem algo errado, então mostra a mensagem de erro e encerra o codigo.
- */
+typedef struct worker
+{
+    char work_number[CHAR_NUM_SIZE];
+    int stage;
+    int accepted;
+    int server_value;
+} Worker;
+
 void check_error(const int code, const char *func_name)
 {
     if (code == -1)
@@ -37,12 +39,6 @@ void check_error(const int code, const char *func_name)
     }
 }
 
-/**
- * @param int numero enviado no terminal
- * @param char* porta correspondente - modifica o ponteiro
- *
- * Salva a porta correta de acordo com o worker
- */
 void calculate_port(int num, char *port)
 {
     switch (num)
@@ -78,14 +74,7 @@ void calculate_port(int num, char *port)
     }
 }
 
-/**
- * @param char número recebido: aquele que o cliente enviou para o cálculo
- * @param char* port: porta do servidor a se conectar
- *
- * Cria um servidor que recebe o número e calcula o necessário.
- *
- */
-void *server_function(char *num, char *PORT)
+void *server_function(Worker *worker, char *PORT)
 {
     struct addrinfo hints, *res;
     bzero(&hints, sizeof(hints));
@@ -103,6 +92,10 @@ void *server_function(char *num, char *PORT)
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     check_error(sockfd, "socket()");
 
+    int opt = 1;
+    err = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    check_error(err, "setsockopt()");
+
     err = bind(sockfd, res->ai_addr, res->ai_addrlen);
     check_error(err, "bind()");
     err = listen(sockfd, 8);
@@ -111,34 +104,38 @@ void *server_function(char *num, char *PORT)
     int clientfd = accept(sockfd, NULL, NULL);
     check_error(clientfd, "accept()");
 
-    char num_to_receive[CHAR_NUM_SIZE];
-    ssize_t bytes = recv(clientfd, num_to_receive, sizeof(num_to_receive), 0);
+    Worker worker_to_receive;
+    ssize_t bytes = recv(clientfd, &worker_to_receive, sizeof(worker_to_receive), 0);
     check_error(bytes, "recv()");
 
-    int num_to_sum_server = atoi(num);
-    int num_to_sum_client = atoi(num_to_receive);
+    if (worker_to_receive.stage != worker->stage)
+    {
+        printf("Processos em estágios diferentes, aguarde...\n");
+        worker->server_value = 0;
+        send(clientfd, worker, sizeof(*worker), 0);
+    }
+    else
+    {
+        worker->accepted = 1;
 
-    num_to_sum_server += num_to_sum_client;
+        int num_to_sum_server = atoi(worker->work_number);
+        int num_to_sum_client = atoi(worker_to_receive.work_number);
 
-    sprintf(num, "%d", num_to_sum_server);
+        num_to_sum_server += num_to_sum_client;
 
-    printf("\033[34mNúmero somado pelo servidor: %s\n", num);
-    printf("\033[34m/-------------------------/\n");
+        sprintf(worker->work_number, "%d", num_to_sum_server);
 
-    send(clientfd, num, sizeof(num), 0);
-    close(sockfd);
+        printf("\033[34mNúmero somado pelo servidor: %s\n", worker->work_number);
+        printf("\033[34m/-------------------------/\n");
+        send(clientfd, worker, sizeof(*worker), 0);
+    }
+
     close(clientfd);
+    close(sockfd);
     freeaddrinfo(res);
 }
 
-/**
- * @param char* num: número do cliente - que ele envia para o servidor
- * @param char* port
- *
- * Função cliente: cria um socket cliente que envia o número para o servidor e recebe sua confiamção.
- *
- */
-void *client_function(char *num, char *PORT)
+void *client_function(Worker *worker, char *PORT)
 {
     struct addrinfo hints, *res;
     bzero(&hints, sizeof(hints));
@@ -153,9 +150,7 @@ void *client_function(char *num, char *PORT)
         exit(1);
     }
 
-    int sockfd = socket(res->ai_family,
-                        res->ai_socktype,
-                        res->ai_protocol);
+    int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     check_error(sockfd, "socket()");
 
     while (1)
@@ -173,7 +168,7 @@ void *client_function(char *num, char *PORT)
         }
     }
 
-    ssize_t bytes_sent = send(sockfd, num, sizeof(num), 0);
+    ssize_t bytes_sent = send(sockfd, worker, sizeof(*worker), 0);
 
     if (bytes_sent < 0)
     {
@@ -182,20 +177,22 @@ void *client_function(char *num, char *PORT)
     }
     ssize_t bytes;
 
-    bytes = recv(sockfd, num, sizeof(num), 0);
+    bytes = recv(sockfd, worker, sizeof(*worker), 0);
 
-    printf("\033[35mNúmero somado recebido pelo cliente: %s\n", num);
-    printf("\033[35m/-------------------------/\n");
-    close(sockfd);
-    freeaddrinfo(res);
+    if (worker->accepted == 0)
+    {
+        close(sockfd);
+        freeaddrinfo(res);
+    }
+    else
+    {
+        printf("\033[35mNúmero somado recebido pelo cliente: %s\n", worker->work_number);
+        printf("\033[35m/-------------------------/\n");
+        close(sockfd);
+        freeaddrinfo(res);
+    }
 }
 
-/**
- * @param char* final_number
- *
- * Recebe o número final e envia para o manager, encerrando o processo.
- * Ou seja, cria um cliente no final.
- */
 void send_to_manager(char *final_number)
 {
     struct addrinfo hints, *res;
@@ -243,14 +240,6 @@ void send_to_manager(char *final_number)
     freeaddrinfo(res);
 }
 
-/**
- * @param int argc: quantas palavras/ parametros foram lidos ao compilar
- * @param char* argv para pegar o número do worker
- *
- * Calcula a porta e faz a lógica do borboleta.
- * Na lógica usa bitwise, com count múltiplo de 2 para saber se os bits correspondentes a cada camada são 1 ou 0.
- * Assim, define qual  worker é cliente e qual é servidor.
- */
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -260,6 +249,9 @@ int main(int argc, char *argv[])
     }
 
     int worker_number = atoi(argv[1]);
+    Worker worker;
+    worker.accepted = 0;
+    worker.stage = 0;
     char port[5];
 
     calculate_port(worker_number, port);
@@ -269,31 +261,47 @@ int main(int argc, char *argv[])
     int number = rand() % 100;
     char number_to_send[CHAR_NUM_SIZE];
     sprintf(number_to_send, "%d", number);
-
+    strcpy(worker.work_number, number_to_send);
     printf("\033[33mNo %d gerou numero %d\033[0m\n", worker_number, number);
 
     int i = (int)log2(NUM_WORKERS) - 1;
     int count = 1;
-    int controller = 0;
     int neighboor;
+    int cliente = 0;
 
     while (i >= 0)
     {
         if ((worker_number & count) != 0)
         {
+            cliente = 1;
             printf("\033[35m/-------------------------/\n");
-            printf("\033[35mCliente %d enviou numero: %s \n", worker_number, number_to_send);
+            printf("\033[35mCliente %d enviou numero: %s \n", worker_number, worker.work_number);
             neighboor = worker_number ^ count;
             char port_neighboor[5];
-            calculate_port(neighboor, port);
-            client_function(number_to_send, port_neighboor);
+            calculate_port(neighboor, port_neighboor);
+            client_function(&worker, port_neighboor);
+
+            while (worker.accepted == 0)
+            {
+                printf("Cliente no aguardo...\n");
+                sleep(1);
+                client_function(&worker, port_neighboor);
+            }
+
             break;
         }
         else
         {
+            worker.server_value = 1;
             printf("\033[34m/-------------------------/\n");
-            printf("\033[34mServidor %d enviou numero: %s \n", worker_number, number_to_send);
-            server_function(number_to_send, port);
+            printf("\033[34mServidor %d enviou numero: %s \n", worker_number, worker.work_number);
+            server_function(&worker, port);
+            if (!worker.server_value)
+                continue;
+            else
+            {
+                worker.stage++;
+            }
         }
 
         count = count * 2;
@@ -302,7 +310,7 @@ int main(int argc, char *argv[])
 
     if (worker_number == 0)
     {
-        send_to_manager(number_to_send);
+        send_to_manager(worker.work_number);
     }
 
     return 0;
