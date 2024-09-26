@@ -1,15 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <strings.h>
-#include <time.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <math.h>
+#include "manager.h"
 
-#define PORT_MANAGER "8080"
 
 /**
  * @param const int code: o que foi devolvido ao chamar a função

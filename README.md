@@ -39,3 +39,7 @@ Pode modificar a ordem dos workers, mas o ideal é ter o manager primeiro, apesa
 Fizemos um arquivo *bash* para facilitar a execução, pode modificá-lo  e mudar a ordem dos workers se desejado. Basta colocar no terminal:
 
     ./rodar.sh
+
+Também tem o *bash* em ordem:
+
+    ./rodar_ordem.sh

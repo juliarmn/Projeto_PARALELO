@@ -1,33 +1,13 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <strings.h>
-#include <time.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <math.h>
+#include "worker.h"
 
-#define PORT_WORKER_0 "8081"
-#define PORT_WORKER_1 "8082"
-#define PORT_WORKER_2 "8083"
-#define PORT_WORKER_3 "8084"
-#define PORT_WORKER_4 "8085"
-#define PORT_WORKER_5 "8086"
-#define PORT_WORKER_6 "8087"
-#define PORT_WORKER_7 "8088"
-#define PORT_MANAGER "8080"
-#define NUM_WORKERS 8
-#define CHAR_NUM_SIZE 4
-
-typedef struct worker
+/*Struct para controlar o envio dos dados como número e estágio*/
+ struct worker
 {
     char work_number[CHAR_NUM_SIZE];
     int stage;
     int accepted;
     int server_value;
-} Worker;
+} ;
 
 void check_error(const int code, const char *func_name)
 {
@@ -38,6 +18,11 @@ void check_error(const int code, const char *func_name)
         exit(1);
     }
 }
+
+/**
+ * @param int numero enviado no terminal
+ * @param char* porta que vai salvar o valor.
+ */
 
 void calculate_port(int num, char *port)
 {
@@ -74,7 +59,15 @@ void calculate_port(int num, char *port)
     }
 }
 
-void *server_function(Worker *worker, char *PORT)
+/**
+ * @param Worker struct que possui os dados do worker
+ * @param char* porta a se conectar
+ * 
+ * Cria o servidor, que valida se os processos estão no mesmo estágio, caso estejam em estágios diferentes ele encerra a conexão.
+ * Só aceita conexão de processos em estágios iguais.
+ * Soma o valor e envia ele de volta.
+ */
+void server_function(Worker *worker, char *PORT)
 {
     struct addrinfo hints, *res;
     bzero(&hints, sizeof(hints));
@@ -136,7 +129,14 @@ void *server_function(Worker *worker, char *PORT)
     freeaddrinfo(res);
 }
 
-void *client_function(Worker *worker, char *PORT)
+/**
+ * @param Worker *wroker que irá enviar seu número
+ * @param char* PORT porta a ser enviada
+ * 
+ * Cria o cliente e envia o valor para  o servidor (caso seja aceito termina corretamente, senão tenta no futuro conectar até estarem no mesmo estágio)
+ * 
+ */
+void client_function(Worker *worker, char *PORT)
 {
     struct addrinfo hints, *res;
     bzero(&hints, sizeof(hints));
@@ -194,6 +194,10 @@ void *client_function(Worker *worker, char *PORT)
     }
 }
 
+/**
+ * @param int numero final da soma
+ * Envia o número final ao manager
+ */
 void send_to_manager(char *final_number)
 {
     struct addrinfo hints, *res;
@@ -241,6 +245,14 @@ void send_to_manager(char *final_number)
     freeaddrinfo(res);
 }
 
+/**
+ * @param int argc - quantidade de parâmetros no terminal
+ * @param char* argv[] - é aquele que manda o número do worker
+ * 
+ * Aqui implementa a borboleta, fazendo bitwise and a cada estágio, descobre quem é cliente e quem é servidor.
+ * Com bitwise xor ele descobre o vizinho naquela rodada.
+ * Faz a verificação de o cliente e server estavam no  mesmo estágio, senão mantém o cliente tentando conectar.
+ */
 int main(int argc, char *argv[])
 {
     if (argc != 2)
