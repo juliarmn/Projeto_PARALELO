@@ -105,19 +105,20 @@ void *server_function(Worker *worker, char *PORT)
     check_error(clientfd, "accept()");
 
     Worker worker_to_receive;
-    ssize_t bytes = recv(clientfd, &worker_to_receive, sizeof(worker_to_receive), 0);
+    ssize_t bytes = recv(clientfd, &worker_to_receive, sizeof(Worker), 0);
     check_error(bytes, "recv()");
 
     if (worker_to_receive.stage != worker->stage)
     {
         printf("Processos em estágios diferentes, aguarde...\n");
         worker->server_value = 0;
-        send(clientfd, worker, sizeof(*worker), 0);
+        worker_to_receive.accepted = 0;
+        send(clientfd, &worker_to_receive, sizeof(Worker), 0);
     }
     else
     {
         worker->accepted = 1;
-
+        worker->server_value = 1;
         int num_to_sum_server = atoi(worker->work_number);
         int num_to_sum_client = atoi(worker_to_receive.work_number);
 
@@ -127,7 +128,7 @@ void *server_function(Worker *worker, char *PORT)
 
         printf("\033[34mNúmero somado pelo servidor: %s\n", worker->work_number);
         printf("\033[34m/-------------------------/\n");
-        send(clientfd, worker, sizeof(*worker), 0);
+        send(clientfd, worker, sizeof(Worker), 0);
     }
 
     close(clientfd);
@@ -168,7 +169,7 @@ void *client_function(Worker *worker, char *PORT)
         }
     }
 
-    ssize_t bytes_sent = send(sockfd, worker, sizeof(*worker), 0);
+    ssize_t bytes_sent = send(sockfd, worker, sizeof(Worker), 0);
 
     if (bytes_sent < 0)
     {
@@ -177,7 +178,7 @@ void *client_function(Worker *worker, char *PORT)
     }
     ssize_t bytes;
 
-    bytes = recv(sockfd, worker, sizeof(*worker), 0);
+    bytes = recv(sockfd, worker, sizeof(Worker), 0);
 
     if (worker->accepted == 0)
     {
@@ -296,12 +297,9 @@ int main(int argc, char *argv[])
             printf("\033[34m/-------------------------/\n");
             printf("\033[34mServidor %d enviou numero: %s \n", worker_number, worker.work_number);
             server_function(&worker, port);
-            if (!worker.server_value)
-                continue;
-            else
-            {
-                worker.stage++;
-            }
+            while (!worker.server_value)
+                server_function(&worker, port);
+            worker.stage++;
         }
 
         count = count * 2;
